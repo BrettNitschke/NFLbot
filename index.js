@@ -1,10 +1,11 @@
 var RtmClient = require('@slack/client').RtmClient;
 var RTM_EVENTS = require('@slack/client').RTM_EVENTS;
 
+var helpers = require('./helpers');
 var nflScores = require('nfl_scores');
 var bot_token = process.env.SLACK_BOT_TOKEN || '';
-var scoreString;
-var foundTeam = 0;
+//var scoreString;
+//var foundTeam = 0;
 
 var rtm = new RtmClient(bot_token);
 rtm.start();
@@ -33,7 +34,7 @@ rtm.on(RTM_EVENTS.MESSAGE, function handleRtmMessage(message) {
   if (message.text === "all.") {
     var channel = "#general";
     nflScores.refresh(function(err, scores){
-      formatScores(scores);
+      scoreString = helpers.formatScores(scores);
       rtm.sendMessage("This week's scores: \n " + scoreString, message.channel);
     })
     console.log(scoreString);
@@ -47,46 +48,10 @@ rtm.on(RTM_EVENTS.MESSAGE, function handleRtmMessage(message) {
     var team = message.text;
     var channel = "#general";
     nflScores.refresh(function(err, scores){
-      findScoreByTeam(scores, team);
-      if (foundTeam == 1){
-        rtm.sendMessage("The " + team + " score: \n" + scoreString, message.channel);
+      var results = helpers.findScoreByTeam(scores, team);
+      if (results.foundTeam == 1){
+        rtm.sendMessage("The " + team + " score: \n" + results.scoreString, message.channel);
       }
     })
 
 });
-
-function formatScores(scores){
-   scoreString = " ";
-
-  for (let i =0, l = scores.games.length; i < l; i++){
-    var hnn = scores.games[i].hnn;
-    var hs = scores.games[i].hs;
-    var vnn = scores.games[i].vnn;
-    var vs = scores.games[i].vs;
-
-    scoreString += "*" + hnn + "*" + ": " + hs + " " + vnn + ": " + vs + "\n";
-  }
-
-}
-
-function findScoreByTeam(scores, team){
-  foundTeam = 0;
-  var theTeam = team;
-
-  scoreString = " ";
-  for (let i = 0, l = scores.games.length; i < l; i++){
-
-    var home = scores.games[i].hnn;
-    var away = scores.games[i].vnn;
-
-    if (away === theTeam || home === theTeam) {
-      var hnn = scores.games[i].hnn;
-      var hs = scores.games[i].hs;
-      var vnn = scores.games[i].vnn;
-      var vs = scores.games[i].vs;
-      foundTeam = 1;
-      scoreString = "*" + hnn + "*" + ": " + hs + " " + vnn + ": " + vs + "\n";
-    }
-
-  }
-}
